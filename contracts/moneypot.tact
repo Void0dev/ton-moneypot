@@ -36,30 +36,28 @@ contract PayoutBeacon with Ownable, Deployable {
     self.completed = false;
   }
 
-  receive(msg: TryPayout){
-    // Check context
-    let ctx: Context = context();
-    require(ctx.sender == self.master, "Invalid sender");
-    // Send response
-    if (!self.completed) {
-      self.completed = true;
-      self.forward(ctx.sender,
-        PayoutOk{value: msg.value, address: self.owner}.toCell(),
-        true,
-        null
-      );
-    } else self.forward(ctx.sender,
-      PayoutFailed{value: msg.value, address: self.owner}.toCell(),
-      false,
-      null
-    );
+  receive(msg: TryPayout) {
+
+      // Check context
+      let ctx: Context = context();
+      require(ctx.sender == self.master, "Invalid sender");
+
+      // Send response
+      if (!self.completed) {
+          self.completed = true;
+          self.forward(ctx.sender, PayoutOk{ value: msg.value, address: self.owner }.toCell(), true, null);
+      } else {
+          self.forward(ctx.sender, PayoutFailed{ value: msg.value, address: self.owner }.toCell(), false, null);
+      }
   }
 
-  bounced(msg: bounced<PayoutOk>){
-    // Reset completed flag is our message bounced
-    self.completed = false;
-    // Send notification
-    self.forward(self.owner, "Payout failed".asComment(), false, null);
+  bounced(msg: bounced<PayoutOk>) {
+
+      // Reset completed flag is our message bounced
+      self.completed = false;
+
+      // Send notification
+      self.forward(self.owner, "Payout failed".asComment(), false, null);
   }
 
   get fun master(): Address {
@@ -73,13 +71,11 @@ contract PayoutBeacon with Ownable, Deployable {
 
 contract MoneypotMaster with Deployable, Ownable, Resumable {
   override const storageReserve: Int = ton("0.1");
-  owner: Address;
-  publicKey: Int as uint256;
+  owner: Address;  
   stopped: Bool;
 
-  init(owner: Address, publicKey: Int){
-    self.owner = owner;
-    self.publicKey = publicKey;
+  init(owner: Address){
+    self.owner = owner;    
     self.stopped = false;    
   }
 
@@ -87,53 +83,29 @@ contract MoneypotMaster with Deployable, Ownable, Resumable {
   // Payout operations
   //
 
-  receive(withdraw: String){
-    // Normalize
-    withdraw = normalizeKey(withdraw);
+  receive(msg: RewardWinner){
+    self.requireOwner();
     // Check that the contract is not stopped
     self.requireNotStopped();
     // Get the current context
-    let ctx: Context = context();
-    require(ctx.value >= ton("1.0"), "Invalid value");
-    // Parse the withdraw message
-    let msg: Slice = withdraw.fromBase64();
-    let signature: Slice = msg.loadBits(512);
-    let value: Int = msg.loadCoins();
-    // Verify the signature
-    let sigCell: Cell = beginCell().storeAddress(ctx.sender).storeCoins(value
-    ).endCell();
-    let hash: Int = sigCell.hash();
-    require(checkSignature(hash, signature, self.publicKey),
-      "Invalid signature"
-    );
+    let ctx: Context = context();      
+    
+    let value = msg.value;
+    let winner = msg.address;
     // Check min value
     require(value >= ton("1.0"), "Check withdraw min value");
     // Check balance before sending forward to save some gas on depletion
     require(myBalance() > ((ton("1.0") + self.storageReserve) + value),
       "Insufficient balance on master"
     );
-    // Send message to bacon
+
+    // Send message to payout beacon
     let init: StateInit = initOf PayoutBeacon(ctx.sender, myAddress());
     let address: Address = contractAddress(init);
     self.forward(address,
-      TryPayout{address: ctx.sender, value: value}.toCell(),
+      TryPayout{address: winner, value: value}.toCell(),
       true,
       init
-    );
-  }
-
-  receive(msg: RewardWinner){
-    // Check that the contract is not stopped
-    self.requireNotStopped();
-    // Get the current context
-    let ctx: Context = context();
-    require(ctx.sender == self.owner, "Invalid sender");
-    send(SendParameters{
-        value: msg.value,
-        mode: SendRemainingValue,
-        to: msg.address,
-        body: "Reward".asComment()
-      }
     );
   }
 
@@ -213,25 +185,4 @@ contract MoneypotMaster with Deployable, Ownable, Resumable {
       }
     );
   }
-
-  // Getters
-
-  get fun publicKey(): Int {
-    return self.publicKey;
-  }
-}
-
-fun normalizeKey(src: String): String {
-  let out: Builder = beginCell();
-  let slice: Slice = src.asSlice();
-  while (slice.bits() > 0 || slice.refs() > 0) {
-    require((slice.bits() % 8) == 0 && slice.refs() <= 1, "Invalid string");
-    if (slice.bits() > 0) {
-      let ch: Int = slice.loadUint(8);
-      if (ch >= 33 && ch <= 126) {
-        out = out.storeUint(ch, 8);
-      }
-    } else slice = slice.loadRef().beginParse();
-  }
-  return out.asSlice().asString();
 }
