@@ -1,18 +1,12 @@
 # MoneyPot game
 
-https://verifier.ton.org/EQDc1gynhAOQ1ErvYspbK7ZOD28Cj5ny5tOd0JEkQn3U7JuQ?testnet
+## Deployment
 
-============================================================================================
-Contract Address (testnet)
-============================================================================================
+### Testnet
+1. MoneypotMaster https://verifier.ton.org/EQDc1gynhAOQ1ErvYspbK7ZOD28Cj5ny5tOd0JEkQn3U7JuQ?testnet
 
-kQDc1gynhAOQ1ErvYspbK7ZOD28Cj5ny5tOd0JEkQn3U7CAa
-
-============================================================================================
-Please, follow deployment link
-============================================================================================
-
-https://verifier.ton.org/tactDeployer/Qmein1kgVbPwucSzUrCkHm2N75KiGamJwG5cp3xRuDR41Y?testnet
+### Mainnet
+TBA
 
 ## Project structure
 
