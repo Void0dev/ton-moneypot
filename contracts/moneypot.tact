@@ -25,6 +25,7 @@ message EventPayoutCompleted {
 message RewardWinner {
   address: Address;
   value: Int as coins;
+  // prices: 
 }
 
 contract PayoutBeacon with Ownable, Deployable {
@@ -95,47 +96,21 @@ fun calculateJettonWalletAddress(ownerAddress: Address,
     contractAddress(StateInit{code: jettonWalletCode, data: initData.toCell()});
 }
 
-struct USDTJettonWalletData {
-    status: Int as uint4;
-    balance: Int as coins;
-    ownerAddress: Address;
-    jettonMasterAddress: Address;
-}
-
-// And the function to calculate the wallet address may look like this:
-fun calculateUSDTJettonWalletAddress(
-    ownerAddress: Address,
-    jettonMasterAddress: Address,
-    jettonWalletCode: Cell
-): Address {
-    let initData = USDTJettonWalletData{
-        status: 0,
-        balance: 0,
-        ownerAddress,
-        jettonMasterAddress,
-    };
-
-    return contractAddress(StateInit{
-        code: jettonWalletCode,
-        data: initData.toCell(),
-    });
-}
-
 contract MoneypotMaster with Deployable, Ownable, Resumable {
   override const storageReserve: Int = ton("0.1");
   owner: Address;
   stopped: Bool;
-  usdtJettonWalletAddress: Address;
-  usdtJettonAmount: Int as coins = 0;
+  jettonWalletAddress: Address;
+  jettonAmount: Int as coins = 0;
 
-  init(owner: Address, usdtJettonWalletCode: Cell, usdtJettonMasterAddress: Address){
+  init(owner: Address, jettonWalletCode: Cell, jettonMasterAddress: Address){
     self.owner = owner;
     self.stopped = false;
 
-    self.usdtJettonWalletAddress = calculateUSDTJettonWalletAddress(
+    self.jettonWalletAddress = calculateJettonWalletAddress(
         myAddress(),
-        usdtJettonMasterAddress,
-        usdtJettonWalletCode,
+        jettonMasterAddress,
+        jettonWalletCode,
     );
   }
 
@@ -153,11 +128,11 @@ contract MoneypotMaster with Deployable, Ownable, Resumable {
 
   // Getters
   get fun tonAddress(): Address {
-    return self.owner;
+    return myAddress();
   }
 
   get fun usdtAddress(): Address {
-    return self.usdtJettonWalletAddress;
+    return self.jettonWalletAddress;
   }
 
   //

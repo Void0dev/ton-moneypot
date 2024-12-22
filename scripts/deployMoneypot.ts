@@ -3,22 +3,20 @@ import * as path from 'path';
 import { Address, beginCell, contractAddress, fromNano, toNano } from "@ton/core";
 import { MoneypotMaster } from "../build/Moneypot/tact_MoneypotMaster";
 import { prepareTactDeployment } from "@tact-lang/deployer";
-import { NetworkProvider } from '@ton/blueprint';
-import { SampleJetton } from '../build/USDTJetton/tact_SampleJetton';
+import { compile, NetworkProvider } from '@ton/blueprint';
+import { JettonWalletTemplate } from '../build/TestJetton/tact_JettonWalletTemplate';
 
 export async function run(provider: NetworkProvider) {
     // Parameters
     let testnet = true;
     let packageName = 'tact_MoneypotMaster.pkg';
     let owner = Address.parse('0QADPO8Yiz0uzKh6voecVq8VfWijcTtphTKX3Wo1wEK5ClaA');
+    let jettonMatser = Address.parse('EQDaBJqenXzLPhuhqo3-4ZHyBXCvA4lnY8-0qHH2CkUzinjq');
 
-    let usdtJettonPackageName = 'tact_SampleJetton.pkg';
-    let usdtJettonAddress = Address.parse('0:0000000000000000000000000000000000000000000000000000000000000001');
-    let usdtJettonBalance = fromNano(100);
-
-    // Initialize contract
-    let initUSDTJetton = SampleJetton.init();
-    let init = await MoneypotMaster.init(owner);
+    // Initialize contract    
+    // let jettonCode = await compile('JettonWallet');
+    let initJetton = await JettonWalletTemplate.init(jettonMatser, owner);
+    let init = await MoneypotMaster.init(owner, initJetton.code, jettonMatser);
 
     // Load required data
     let address = contractAddress(0, init);
