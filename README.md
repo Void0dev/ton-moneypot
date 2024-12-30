@@ -3,12 +3,11 @@
 ## Deployment
 
 ### Testnet
-1. MoneypotMaster https://verifier.ton.org/EQBbHy8pPbITcJgNG8dBePGZSQpC4TeY843DFG_jP9Aha1HK?testnet
-2. TestJettonMaster https://verifier.ton.org/EQDaBJqenXzLPhuhqo3-4ZHyBXCvA4lnY8-0qHH2CkUzinjq?testnet
+1. Moneypot https://verifier.ton.org/EQCRyI1SzvGHAbThdWKulMdegp-rZDX5UPdY14H30LMoFiyn?testnet
 
 Wallets Addresses for incoming bets:
-1. TON EQADPO8Yiz0uzKh6voecVq8VfWijcTtphTKX3Wo1wEK5CrDP
-2. TestJetton: EQCNtzVQkhvNoXqZQKucNlOvN0v135aTsInzbXwtqat7VWmu
+1. TON EQCRyI1SzvGHAbThdWKulMdegp-rZDX5UPdY14H30LMoFiyn
+2. MPT EQAD9d5bGept8Q7yK1dxr2IPyXUGaRTidhtk37N3CB6eNgeX
 
 ### Mainnet
 TBA

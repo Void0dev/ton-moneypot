@@ -1,11 +1,10 @@
 import { NetworkProvider } from '@ton/blueprint';
 import { comment, toNano } from '@ton/core';
 
-import { JettonMasterTemplate } from '../build/Sample/tact_JettonMasterTemplate';
-import { JettonWalletTemplate } from '../build/Sample/tact_JettonWalletTemplate';
-import { loadTep64TokenData } from '../build/Sample/tact_Sample';
-import { randomInt } from './utils';
-
+import { JettonMasterTemplate } from '../build/TestJetton/tact_JettonMasterTemplate';
+import { JettonWalletTemplate } from '../build/TestJetton/tact_JettonWalletTemplate';
+import { loadTep64TokenData } from '../build/TestJetton/tact_TestJetton';
+import { randomInt } from '../tact-utils/scripts/utils';
 
 export async function run(provider: NetworkProvider): Promise<void> {
     const receiverAddr = provider.sender().address!!;

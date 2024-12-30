@@ -2,72 +2,9 @@ import "@stdlib/deploy";
 import "@stdlib/ownable";
 import "@stdlib/stoppable";
 
-message TryPayout {
-  address: Address;
-  value: Int as coins;
-}
-
-message PayoutOk {
-  address: Address;
-  value: Int as coins;
-}
-
-message PayoutFailed {
-  address: Address;
-  value: Int as coins;
-}
-
-message EventPayoutCompleted {
-  address: Address;
-  value: Int as coins;
-}
-
-message RewardWinner {
-  address: Address;
-  value: Int as coins;
-  // prices: 
-}
-
-contract PayoutBeacon with Ownable, Deployable {
-  override const storageReserve: Int = ton("0.1");
-  owner: Address;
-  master: Address;
-  completed: Bool;
-
-  init(owner: Address, master: Address){
-    self.owner = owner;
-    self.master = master;
-    self.completed = false;
-  }
-
-  receive(msg: TryPayout){
-    // Check context
-    let ctx: Context = context();
-    require(ctx.sender == self.master, "Invalid sender");
-    // Send response
-    if (!self.completed) {
-        self.completed = true;
-        self.forward(ctx.sender, PayoutOk{ value: msg.value, address: self.owner }.toCell(), true, null);
-    } else {
-        self.forward(ctx.sender, PayoutFailed{ value: msg.value, address: self.owner }.toCell(), false, null);
-    }
-  }
-
-  bounced(msg: bounced<PayoutOk>) {
-    // Reset completed flag is our message bounced
-    self.completed = false;
-    // Send notification
-    self.forward(self.owner, "Payout failed".asComment(), false, null);
-  }
-
-  get fun master(): Address {
-    return self.master;
-  }
-
-  get fun completed(): Bool {
-    return self.completed;
-  }
-}
+import "./messages.tact";
+import "./events.tact";
+import "./payout.tact";
 
 struct JettonWalletData {
     balance: Int as coins;
@@ -96,6 +33,23 @@ fun calculateJettonWalletAddress(ownerAddress: Address,
     contractAddress(StateInit{code: jettonWalletCode, data: initData.toCell()});
 }
 
+message PlaceBet {
+  // TO DO: batch bets
+}
+
+message BetPlaced {
+  betId: Int as uint32;
+  address: Address;
+  tonAmount: Int as coins;
+  jettonAmount: map<Address, Int as coins>;
+}
+
+message RoundPayoutCompleted {
+  address: Address;
+  tonAmount: Int as coins;
+  jettonAmount: map<Address, Int as coins>;
+}
+
 contract MoneypotMaster with Deployable, Ownable, Resumable {
   override const storageReserve: Int = ton("0.1");
   owner: Address;
@@ -103,9 +57,14 @@ contract MoneypotMaster with Deployable, Ownable, Resumable {
   jettonWalletAddress: Address;
   jettonAmount: Int as coins = 0;
 
+  // bets
+  bets_seqno: Int as uint32 = 0;
+  last_better: Address;
+
   init(owner: Address, jettonWalletCode: Cell, jettonMasterAddress: Address){
     self.owner = owner;
     self.stopped = false;
+    self.last_better = owner;
 
     self.jettonWalletAddress = calculateJettonWalletAddress(
         myAddress(),
@@ -116,11 +75,11 @@ contract MoneypotMaster with Deployable, Ownable, Resumable {
 
   receive(msg: JettonTransferNotification) {
       require(
-          sender() == self.usdtJettonWalletAddress,
+          sender() == self.jettonWalletAddress,
           "Notification not from your jetton wallet!",
       );
 
-      self.usdtJettonAmount += msg.amount;
+      self.jettonAmount += msg.amount;
 
       // Forward excesses
       self.forward(msg.sender, null, false, null);
@@ -131,29 +90,61 @@ contract MoneypotMaster with Deployable, Ownable, Resumable {
     return myAddress();
   }
 
-  get fun usdtAddress(): Address {
+  get fun jettonAddress(): Address {
     return self.jettonWalletAddress;
   }
 
+  get fun jettonAmount(): Int {
+    return self.jettonAmount;
+  }
+
+
   //
-  // Payout operations
+  // Game logic
   //
 
-  receive(msg: RewardWinner){
+  //
+  // Bet operations
+  //
+
+  receive(msg: PlaceBet){    
+    // Check that the contract is not stopped
+    self.requireNotStopped();
+
+    // Get the current context
+    let ctx: Context = context();
+    
+    emit(BetPlaced{
+      betId: self.bets_seqno,
+      address: ctx.sender,
+      tonAmount: ctx.value,
+      jettonAmount: emptyMap(),
+    }.toCell());
+    self.bets_seqno += 1;
+    self.last_better = ctx.sender;
+  }
+
+  receive(msg: EndRound){
     self.requireOwner();
     // Check that the contract is not stopped
     self.requireNotStopped();
     // Get the current context
     let ctx: Context = context();
 
-    let value = msg.value;
-    let winner = msg.address;
+    // Check end round conditions are met
+    let pot_value = myBalance();
+    let value = pot_value - self.storageReserve;
+
     // Check min value
     require(value >= ton("1.0"), "Check withdraw min value");
     // Check balance before sending forward to save some gas on depletion
     require(myBalance() > ((ton("1.0") + self.storageReserve) + value),
       "Insufficient balance on master"
     );
+
+    // Determine winner
+    let winner = self.last_better;
+    
     // Send message to payout beacon
     let init: StateInit = initOf PayoutBeacon(ctx.sender, myAddress());
     let address: Address = contractAddress(init);
@@ -177,7 +168,7 @@ contract MoneypotMaster with Deployable, Ownable, Resumable {
       "Insufficient balance on master"
     );
     // Emit event
-    emit(EventPayoutCompleted{address: ok.address, value: ok.value}.toCell());
+    emit(RoundPayoutCompleted{address: ok.address, tonAmount: ok.value, jettonAmount: emptyMap()}.toCell());
     // Send the payout
     send(SendParameters{
         value: ok.value,

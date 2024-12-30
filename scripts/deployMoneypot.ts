@@ -11,7 +11,7 @@ export async function run(provider: NetworkProvider) {
     let testnet = true;
     let packageName = 'tact_MoneypotMaster.pkg';
     let owner = Address.parse('0QADPO8Yiz0uzKh6voecVq8VfWijcTtphTKX3Wo1wEK5ClaA');
-    let jettonMatser = Address.parse('EQDaBJqenXzLPhuhqo3-4ZHyBXCvA4lnY8-0qHH2CkUzinjq');
+    let jettonMatser = Address.parse('EQC_r0gkBKPyOTXpyNWFQ0cfIdRLPrx0aEmoNJYasMCjRd5I');
 
     // Initialize contract    
     // let jettonCode = await compile('JettonWallet');
